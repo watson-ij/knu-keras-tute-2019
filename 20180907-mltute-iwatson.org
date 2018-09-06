@@ -147,7 +147,7 @@ For a GPU tensorflow, usually best to build yourself (out of scope)
     :END:
 
 #+ATTR_LATEX: :width \textwidth
-[[file:../../talks-2017/keras-tutorial-201709/iris_petal_sepal.png]]
+[[file:iris_petal_sepal.png]]
 
 ***                                                                   :BMCOL:
     :PROPERTIES:
@@ -231,7 +231,7 @@ In order to classify the irises, we'll build a simple network in Keras.
 - Interface to/from the model with numpy arrays
 
 #+ATTR_LATEX: :width .5\textwidth
-[[file:../../talks-2017/keras-tutorial-201709/nn-1a.png]]
+[[file:nn-1a.png]]
 
 - Our model will be a simple NN with a single hidden layer before the output
 - We start by building a Sequential model and add a Dense (fully-connected) layer, with sigmoid activation
@@ -314,13 +314,13 @@ Other options to consider:
 
 ReLU \hfill sigmoid \hfill tanh \hfill softplus
 #+ATTR_LATEX: :width .24\textwidth
-[[file:../../talks-2017/20171115-keras/relu.png]] 
+[[file:relu.png]] 
 #+ATTR_LATEX: :width .24\textwidth
-[[file:../../talks-2017/20171115-keras/sigmoid.png]] 
+[[file:sigmoid.png]] 
 #+ATTR_LATEX: :width .24\textwidth
-[[file:../../talks-2017/20171115-keras/tanh.png]] 
+[[file:tanh.png]] 
 #+ATTR_LATEX: :width .24\textwidth
-[[file:../../talks-2017/20171115-keras/softplus.png]]
+[[file:softplus.png]]
  
 ** Model picutre
 
@@ -521,14 +521,14 @@ print("Loss={:.2f}\nAccuracy = {:.2f}".format(loss, accuracy))
 ** A Convolutional Network
 
 #+ATTR_LATEX: :width \textwidth
-[[file:../../talks-2017/20171115-keras/convolve.png]]
+[[file:convolve.png]]
 
 - One of the great advances in image classification in recent times is the development of the convolutional layer. 
 - We have some filter kernel `K` of size `n x m` which we apply to every `n x m` cell on the original image to create a new filtered image. 
 - It has been seen that applying these in multiple layers of a network can build up multiple levels of abstraction to classify higher-level features.
 
 #+ATTR_LATEX: :width \textwidth
-[[file:../../talks-2017/20171115-keras/NN_conv.png]]
+[[file:NN_conv.png]]
 
 Reference: http://www.wildml.com/2015/11/understanding-convolutional-neural-networks-for-nlp/
 

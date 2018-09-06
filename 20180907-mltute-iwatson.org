@@ -1,0 +1,1011 @@
+#+TITLE:
+#+AUTHOR:
+#+DATE:
+# Below property stops org-babel from running code on export
+#+PROPERTY: header-args    :eval never-export :tangle yes
+#+startup: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [presentation,xcolor=dvipsnames]
+#+OPTIONS: ^:{} toc:nil H:2
+#+BEAMER_FRAME_LEVEL: 2
+#+LATEX_HEADER: \usepackage{tikz}
+#+LATEX_HEADER: \usepackage{amsmath} \usepackage{graphicx}
+#+BEAMER_THEME: Madrid
+#+LATEX_HEADER: \usepackage{mathpazo}
+#+BEAMER_HEADER: \definecolor{IanColor}{rgb}{0.0, 0.4, 0.6}
+#+BEAMER_HEADER: \usecolortheme[named=IanColor]{structure} % Set a nicer base color
+#+BEAMER_HEADER: \newcommand*{\LargerCdot}{\raisebox{-0.7ex}{\scalebox{2.5}{$\cdot$}}} 
+#+BEAMDER_HEADER: \setbeamertemplate{items}{$\bullet$} % or \bullet, replaces ugly png
+#+BEAMER_HEADER: \colorlet{DarkIanColor}{IanColor!80!black} \setbeamercolor{alerted text}{fg=DarkIanColor} \setbeamerfont{alerted text}{series=\bfseries}
+#+LATEX_HEADER: \usepackage{xspace}
+#+LATEX: \setbeamertemplate{navigation symbols}{} % Turn off navigation
+#+LATEX: \newcommand{\backupbegin}{\newcounter{framenumberappendix} \setcounter{framenumberappendix}{\value{framenumber}}}
+#+LATEX: \newcommand{\backupend}{\addtocounter{framenumberappendix}{-\value{framenumber}} \addtocounter{framenumber}{\value{framenumberappendix}}}
+ 
+#+LATEX: \institute[USeoul]{University of Seoul}
+#+LATEX: \author[I.J. Watson]{\underline{Ian J. Watson} \\ ian.james.watson@cern.ch}
+#+LATEX: \date[ML Workshop 7.9.2018]{September 7, 2018\\ML Workshop} 
+#+LATEX: \title[ML Tute]{Deep Learning Practical}
+# +LATEX: \titlegraphic{\includegraphics[height=.2\textheight]{~/Dropbox/writing/course/stats-for-pp/logo/cms_logo.png} \hspace{15mm} \includegraphics[height=.2\textheight]{~/Dropbox/writing/course/stats-for-pp/logo/UOS_emblem.png}}
+#+LATEX: \maketitle
+
+# (setq org-babel-python-command "/cms/scratch/iwatson/install/bin/rpython")
+# (setq org-babel-python-command "~/install/bin/root_python.sh")
+# (setq python-shell-completion-native-enable nil)
+
+# Test RDataFrame in nightly:
+# . /cvmfs/sft.cern.ch/lcg/nightlies/dev3/Wed/ROOT/HEAD/x86_64-slc6-gcc7-opt/ROOT-env.sh
+
+* Intro to Keras
+
+** Slides
+
+- Slides available from:
+
+github.com/watson-ij/mltute
+
+** Goals
+
+- Get up and running quickly with Deep Learning \pause
+- Therefore, use Keras to get up and running quickly \pause
+- For this lecture, I recommend using google colaboratory
+  - Machine learning education and research tool setup by google, all
+    the packages are installed, just need a google account to sign in
+
+https://colab.research.google.com
+
+- Lets setup a new workspace
+
+** Keras
+
+- Deep learning framework built by Google engineer François Chollet
+- High-level interface built allowing eg Theano or Tensorflow as a backend
+  - Has been accepted into mainline Tensorflow, so always accessible there
+- Library written in python, user-friendly interface
+- Easy to get started building networks
+- Highly modular and easily expandable
+  - Can drop down into the underlying library when complex/bespoke operations
+    are needed
+- Quickly build and train serious models
+
+** Dependences
+
+If you want to follow along with a local setup:
+
+With python and pip installed, you can pull the dependencies by pip
+installing (you might need to add `--user` to the end of the command
+lines):
+
+\footnotesize
+#+BEGIN_SRC sh
+pip install matplotlib
+pip install keras
+pip install tensorflow # Pulls in the CPU version of tensorflow
+pip install seaborn # For downloading viewing the iris dataset
+pip install scikit-learn
+pip install h5py
+#+END_SRC
+
+For a GPU tensorflow, usually best to build yourself (out of scope)
+
+** Kaggle
+
+- Kaggle is a data science exploration/competition website
+- Eg CERN posted a track finding with Deep Learning as a competition
+  - https://www.kaggle.com/c/trackml-particle-identification
+- Idea is to encourage cooperation across discplines using ML techniques
+- Offers free jupyter-notebook-as-a-service
+  - Even offers free access to cloud-based GPUs
+- DEMO
+
+** Continuing
+
+- Follow along either on the web-based service, or your own machine
+
+\tiny
+#+BEGIN_SRC python :session mltute :exports code :results none
+  import h5py
+  import os
+  import keras
+  from keras.models import Sequential
+  from keras.layers import (Dense, Activation, Flatten, Conv2D, Dropout, Reshape, 
+			    UpSampling2D, BatchNormalization, MaxPooling2D)
+  from keras.optimizers import SGD
+  import matplotlib
+  matplotlib.use("AGG")
+  import matplotlib.pyplot as plt
+  import seaborn as sns
+  import sklearn.cross_validation as scv
+  import sklearn
+  import numpy as np
+  import tensorflow as tf
+
+  # Or use Keras from tensorflow
+  # keras = tf.keras
+  # Sequential = keras.Sequential
+  # Activation = keras.layers.Activation
+  # Dense = keras.layers.Dense
+  # LeakyReLU = keras.layers.LeakyReLU
+  # BatchNormalization = keras.layers.BatchNormalization
+  # Reshape = keras.layers.Reshape
+  # UpSampling2D = keras.layers.UpSampling2D
+  # Dropout = keras.layers.Dropout
+  # Conv2D = keras.layers.Conv2D
+  # MaxPooling2D = keras.layers.MaxPooling2D
+  # Flatten = keras.layers.Flatten
+  # SGD = keras.optimizers.SGD
+  # mnist = keras.datasets.mnist
+#+END_SRC
+
+* Plants
+
+** The iris dataset and a basic network with Keras
+
+***                                                                   :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: .5
+    :END:
+
+#+ATTR_LATEX: :width \textwidth
+[[file:../../talks-2017/keras-tutorial-201709/iris_petal_sepal.png]]
+
+***                                                                   :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: .5
+    :END:
+
+- The iris dataset is a classic classification task, first studied by
+  Fisher in 1936. 
+- The goal is, given features measured from a particular
+  iris, classify it into one of three species
+  - Iris setosa, virginica, versicolor. 
+- The variables are: Sepal width and length, petal width and length (all in cm).
+
+** Iris dataset
+
+We begin by loading the iris dataset, helpfully available from the
+seaborn pacakge, which also lets us create plots showing the
+correlations between the variables.
+
+\footnotesize
+#+BEGIN_SRC python :session mltute :results value :exports both
+iris = sns.load_dataset("iris")
+iris.head()
+#+END_SRC
+
+#+RESULTS:
+:    sepal_length  sepal_width  petal_length  petal_width species
+: 0           5.1          3.5           1.4          0.2  setosa
+: 1           4.9          3.0           1.4          0.2  setosa
+: 2           4.7          3.2           1.3          0.2  setosa
+: 3           4.6          3.1           1.5          0.2  setosa
+: 4           5.0          3.6           1.4          0.2  setosa
+
+\small
+In Kaggle, add the iris json dataset, then load in pands
+
+\footnotesize
+#+BEGIN_SRC python :session mltute :results value :exports both
+import pandas as pd
+iris = pd.read_json("../input/iris.json")
+iris.head()
+#+END_SRC
+
+#+RESULTS:
+:    sepal_length  sepal_width  petal_length  petal_width species
+: 0           5.1          3.5           1.4          0.2  setosa
+: 1           4.9          3.0           1.4          0.2  setosa
+: 2           4.7          3.2           1.3          0.2  setosa
+: 3           4.6          3.1           1.5          0.2  setosa
+: 4           5.0          3.6           1.4          0.2  setosa
+
+** Iris Variables
+
+\footnotesize
+Lets view the basic variables we have. Setosa (blue) looks easily
+separable by the petal length and width, but versicolor and virginica
+are a little tricky.
+
+\scriptsize
+#+BEGIN_SRC python :session mltute :results file :exports both
+plot = sns.pairplot(iris, hue="species")
+plot.savefig('iris.png'); 'iris.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:iris.png]]
+
+#+ATTR_LATEX: :width .5\textwidth
+#+RESULTS:
+
+** Keras Networks
+
+In order to classify the irises, we'll build a simple network in Keras.
+
+- The basic network type in Keras is the Sequential model. 
+- The Sequential model builds a neural network by stacking layers 
+  - Keras also has a Graph model that allows arbitrary connections
+- It builds up like lego, adding one layer on top of another and 
+  connecting between the layers
+  - Keras comes with a menagerie of pre-built layers for you to use.
+- Interface to/from the model with numpy arrays
+
+#+ATTR_LATEX: :width .5\textwidth
+[[file:../../talks-2017/keras-tutorial-201709/nn-1a.png]]
+
+- Our model will be a simple NN with a single hidden layer before the output
+- We start by building a Sequential model and add a Dense (fully-connected) layer, with sigmoid activation
+- Dense: standard layer where all inputs $\hat{x}$ connect to all outputs $\hat{y}$: $\hat{y} = W\hat{x} + \hat{b}$
+  - `keras.layers.Dense(output_dim)`
+  - Can also set the initalization, add an activation layer inline, add regularizers inline, etc.
+- Activation: essentially acts as a switch for a given node, turns output on/off based on threshold
+  - `keras.layers.Activation(type)`
+    - Where type might be:
+  - `'sigmoid`: $f(x) = \frac{1}{1 + e^{-x}}$
+  - `'tanh`: $f(x) = \tanh{x} = \frac{e^x - e^{-x}}{e^x + e^{-x}}$
+  - `'relu`: $f(x) = \mathrm{max}(0, x)$, 'rectified linear unit'
+  - `'softplus`: $f(x) =  \ln{(1 + e^x)}$, smooth approx. to `'relu`
+  - `'softmax`: $f_k(x) = \frac{e^{-x_k}}{\sum_i e^{-x_i}}$ for the $k$'th output, as last layer of categorical dsitribution, represents a probability distribution over the outputs
+
+** Build a model
+
+#+BEGIN_SRC python :session mltute :exports both  :results output
+# Build a model
+model = Sequential()
+
+model.add(Dense(128, input_shape=(4,)))
+model.add(Activation('sigmoid'))
+# model.add(Dense(128))
+# model.add(Activation('sigmoid'))
+model.add(Dense(3))
+model.add(Activation('softmax'))
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+model.summary()
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+dense_1 (Dense)              (None, 128)               640       
+_________________________________________________________________
+activation_1 (Activation)    (None, 128)               0         
+_________________________________________________________________
+dense_2 (Dense)              (None, 3)                 387       
+_________________________________________________________________
+activation_2 (Activation)    (None, 3)                 0         
+=================================================================
+Total params: 1,027
+Trainable params: 1,027
+Non-trainable params: 0
+_________________________________________________________________
+#+end_example
+
+** More on model building
+
+Notice that we build the model by `add`ing and keras takes care of the
+details of input and output sizes of the layer when it can. We than
+pass through a Dense layer of output size 3 and a softmax
+activation. This will output the network probability for each of the
+potential iris classes as a numpy array `(nsamples, (` $p_{setosa}$, $p_{virginica}$, $p_{versicolor}$ `))`.
+
+We `compile` the model with an optimizer and a loss function to
+minimize which will allow it to be trained on labelled data, and we
+can tell the model to evaluate auxilliary metrics, such as the
+accuracy of the model. Keras takes care of automatically calculating
+derivates through the network and running the backpropagation
+algorithm to update the model parameter. We can also pass the
+functions directly to tune the hyperparameters, e.g.:
+=model.compile(loss=keras.losses.mean_squared_error, optimizer=keras.optimizers.SGD(lr=0.0005, momentum=0.9, nesterov=True))=
+
+Here we used the adam optimizer which automatically updates the step
+sizes used for parameter optimization, with a categorical
+cross-entropy loss, which measures $-\sum_{i} t_i\log{p_i}$ where
+$t_i$ is 1 for the true label and $p_i$ is the probability of the
+$i$th label assigned by the model. As the model assigns higher
+probability to the correct label, the cross-entropy goes to 0.
+
+Other options to consider:
+- Activation: sigmoid, softmax, linear, tanh, relu, \ldots
+- Optimizer: SGD, RMSprop, Adagrad, Adadelta, Adam, \ldots
+- Loss: categorical_crossentropy, binary_crossentropy, mean_squared_error, \ldots
+
+ReLU \hfill sigmoid \hfill tanh \hfill softplus
+#+ATTR_LATEX: :width .24\textwidth
+[[file:../../talks-2017/20171115-keras/relu.png]] 
+#+ATTR_LATEX: :width .24\textwidth
+[[file:../../talks-2017/20171115-keras/sigmoid.png]] 
+#+ATTR_LATEX: :width .24\textwidth
+[[file:../../talks-2017/20171115-keras/tanh.png]] 
+#+ATTR_LATEX: :width .24\textwidth
+[[file:../../talks-2017/20171115-keras/softplus.png]]
+ 
+** Model picutre
+
+If pydot is installed we can output a picture of the network
+
+\footnotesize
+#+BEGIN_SRC python :session mltute :results file :exports both
+keras.utils.plot_model(model, to_file='iris_model.png')
+'iris_model.png'
+#+END_SRC
+
+#+ATTR_LATEX: :width .24\textwidth
+#+RESULTS:
+[[file:iris_model.png]]
+
+** Training
+
+Now we fit to the training data. We can set the number of epochs
+(number of training passes through the complete dataset), batch sizes
+(number of datapoints to consider together when updating the network),
+and verbosity. We pass through the input data as a numpy array
+(nsamples, 4) and the output (nsamples, 3) where for each sample one
+of the positions is 1, corresponding to the correct class. We use the
+np.eye identity matrix creator to help us transform the raw species
+information (which labels classes setosa, virginica, versicolor) to
+the expected format (which is (1, 0, 0), (0, 1, 0), (0, 0, 1)).
+
+We fit the model to a labelled dataset simply by calling `fit` with
+the dataset `train_X` and the true labels `train_y`.
+
+#+BEGIN_SRC python :session mltute :exports both :results output
+variables = iris.values[:, :4]
+species = iris.values[:, 4]
+
+smap = {'setosa' : 0, 'versicolor' : 1, 'virginica' : 2}
+species_enc = np.eye(3)[list(smap[s] for s in species)]
+
+# we are simply passing numpy arrays of the data
+print variables[0], species[0], species_enc[0]
+
+train_X, test_X, train_y, test_y = scv.train_test_split(variables, species_enc, train_size=0.8, random_state=0)
+
+model.fit(train_X, train_y, epochs=15, batch_size=1, verbose=1)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+[5.1 3.5 1.4 0.2] setosa [ 1.  0.  0.]
+Epoch 1/15
+120/120 [==============================] - 0s - loss: 0.2873 - acc: 0.9500     
+
+...
+
+Epoch 15/15
+120/120 [==============================] - 0s - loss: 0.1477 - acc: 0.9583
+#+end_example
+
+** Evaluation
+
+After running the model, we can `evaluate` how well it works on the
+labelled test data we kept aside for overfitting evaluation purposes.
+
+#+BEGIN_SRC python :session mltute :exports both :results output
+loss, accuracy = model.evaluate(test_X, test_y, verbose=0)
+print("Loss={:.2f}\nAccuracy = {:.2f}".format(loss, accuracy))
+#+END_SRC
+
+#+RESULTS:
+: Loss=0.11
+: Accuracy = 0.97
+
+** Prediction
+
+And we can ask the model to `predict` some unlablled data
+
+#+BEGIN_SRC python :session mltute :exports both :results output
+pred_y = model.predict(test_X)
+print test_y[:10], pred_y[:10], len(test_y), len(test_X)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+[[ 0.  0.  1.]
+ [ 0.  1.  0.]
+ [ 1.  0.  0.]
+ [ 0.  0.  1.]
+ [ 1.  0.  0.]
+ [ 0.  0.  1.]
+ [ 1.  0.  0.]
+ [ 0.  1.  0.]
+ [ 0.  1.  0.]
+ [ 0.  1.  0.]] [[  2.63856982e-05   8.96630138e-02   9.10310626e-01]
+ [  1.57812089e-02   9.63519156e-01   2.06995625e-02]
+ [  9.96497989e-01   3.50204227e-03   1.25929889e-09]
+ [  4.74178378e-05   1.32592529e-01   8.67359996e-01]
+ [  9.87556934e-01   1.24430126e-02   1.36296467e-08]
+ [  7.08267498e-06   3.83740403e-02   9.61618841e-01]
+ [  9.89948869e-01   1.00511070e-02   9.48140944e-09]
+ [  6.58096792e-03   8.90939236e-01   1.02479771e-01]
+ [  4.53994563e-03   8.66963148e-01   1.28496900e-01]
+ [  1.97829530e-02   9.56251919e-01   2.39650477e-02]] 30 30
+#+end_example
+
+* DNN: MNIST
+
+** MNIST digit recognition and Convolutional Networks
+
+- Another, more recent, classic classification task. 
+- Given a 28x28 image of a handwritten digit, can you train a classifier to recognize the
+  numbers from 0 to 9?
+
+Keras has the ability to download the dataset and parse it into numpy
+arrays. We use =to_categorical=
+
+=0, 1, 2, 3,...=
+
+into 
+
+=[1, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0, 0, 0], ...=
+
+which is a form suitable for using a =categorical_crossentropy= loss
+function in Keras.
+
+#+BEGIN_SRC python :session mltute :exports code
+(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC python :session mltute :exports both :results output
+from keras.utils.np_utils import to_categorical
+# or to_categorical = tf.keras.utils.np_utils.to_categorical
+
+print(y_train[:5])
+y_train_enc = np.eye(10)[y_train] # to_categorical(y_train) # or np.eye(10)[y_train]
+y_test_enc = to_categorical(y_test)
+y_train_enc[:5]
+#+END_SRC
+
+#+RESULTS:
+: [5 0 4 1 9]
+
+** Examples
+
+#+BEGIN_SRC python :session mltute :results file :exports both
+print x_train.shape, y_train_enc.shape
+plt.clf()
+for i in range(6):
+    plt.subplot(1,6,i+1)
+    plt.imshow(x_train[i], cmap='gray')
+
+F = plt.gcf(); F.set_size_inches((14,2))
+plt.savefig('mnist-examples.png'); 'mnist-examples.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:mnist-examples.png]]
+
+#+ATTR_LATEX: :width \textwidth
+#+RESULTS:
+
+** Simple Network
+
+- We can start by simply trying a basic neural network as before. 
+- `Flatten` takes the 2D input and concatenates the rows together to a 1D form suitable for passing to a `Dense` layer.
+
+#+BEGIN_SRC python :session mltute :exports code 
+model = Sequential()
+model.add(Flatten(input_shape=(28,28)))
+model.add(Dense(128))
+model.add(Activation('sigmoid'))
+model.add(Dense(128))
+model.add(Activation('sigmoid'))
+model.add(Dense(10))
+model.add(Activation('softmax'))
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC python :session mltute :exports both :results output
+model.fit(x_train, y_train_enc, epochs=3, verbose=1)
+loss, accuracy = model.evaluate(x_test, y_test_enc, verbose=0)
+print("Loss={:.2f}\nAccuracy = {:.2f}".format(loss, accuracy))
+#+END_SRC
+
+#+RESULTS:
+: Epoch 1/3
+: 60000/60000 [==============================] - 4s - loss: 0.5373 - acc: 0.8531     
+: Epoch 2/3
+: 60000/60000 [==============================] - 4s - loss: 0.3729 - acc: 0.8861     
+: Epoch 3/3
+: 60000/60000 [==============================] - 4s - loss: 0.3207 - acc: 0.9020     
+: Loss=0.30
+: Accuracy = 0.91
+
+** A Convolutional Network
+
+#+ATTR_LATEX: :width \textwidth
+[[file:../../talks-2017/20171115-keras/convolve.png]]
+
+- One of the great advances in image classification in recent times is the development of the convolutional layer. 
+- We have some filter kernel `K` of size `n x m` which we apply to every `n x m` cell on the original image to create a new filtered image. 
+- It has been seen that applying these in multiple layers of a network can build up multiple levels of abstraction to classify higher-level features.
+
+#+ATTR_LATEX: :width \textwidth
+[[file:../../talks-2017/20171115-keras/NN_conv.png]]
+
+Reference: http://www.wildml.com/2015/11/understanding-convolutional-neural-networks-for-nlp/
+
+** Reshaping data for Keras
+
+- The Conv2D convolution layer in keras requires passing a numpy array of `width x height x channels` where channels might represent the red, green and blue channels of an image
+- We have black and white images so we'll just reshape it into the required form with
+  a single channel. 
+- We plot the image just check show the shaping has been performed correctly.
+
+#+BEGIN_SRC python :session mltute :exports both :results file
+x_train_dense = x_train.reshape((len(x_train), 28,28,1))
+x_test_dense = x_test.reshape((len(x_test), 28,28,1))
+
+plt.clf()
+plt.imshow(x_train_dense[0,:,:,0], cmap="gray")
+F = plt.gcf(); F.set_size_inches((2,2)); plt.savefig("testimg.png"); "testimg.png"
+#+END_SRC
+
+#+ATTR_LATEX: :width .3\textwidth
+#+RESULTS:
+[[file:testimg.png]]
+
+** Convolutional Net in Kreas
+
+- Now, lets create a model with a convolution layer `Conv2D`. 
+- Generally, these will be stacked on top of each other with MaxPooling layers and learn
+ edge detection at lower layers and higher level feature extraction in
+ subsequent layers.
+- But just to show how to use them in keras, we'll
+ just create one convolution layer with 32 fitlers, then flatten it
+ into a 1D array and pass it into a Dense hidden layer before the
+ output.
+- We can set the kernel_size (`m x n` size of the filter), and the number of filters used
+
+#+BEGIN_SRC python :session mltute :exports code
+model = Sequential()
+
+model.add(Conv2D(32, kernel_size=(3,3),input_shape=(28,28,1)))
+model.add(Activation('relu'))
+model.add(Flatten())
+model.add(Dense(128))
+model.add(Activation('sigmoid'))
+model.add(Dense(10))
+model.add(Activation('softmax'))
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+#+END_SRC
+
+#+RESULTS:
+
+** Training
+
+And train the model. This is already starting to get to the point
+where a GPU would be extremely helpful!
+
+#+BEGIN_SRC python :session mltute :exports both :results output
+model.fit(x_train_dense, y_train_enc, epochs=4, verbose=1)
+#+END_SRC
+
+#+RESULTS:
+: Epoch 1/4
+: 60000/60000 [==============================] - 65s - loss: 0.4544 - acc: 0.8825    
+: Epoch 2/4
+: 60000/60000 [==============================] - 70s - loss: 0.1745 - acc: 0.9493    
+: Epoch 3/4
+: 60000/60000 [==============================] - 68s - loss: 0.1369 - acc: 0.9591    
+: Epoch 4/4
+: 60000/60000 [==============================] - 69s - loss: 0.1227 - acc: 0.9634    
+: <keras.callbacks.History object at 0x11d742390>
+
+#+BEGIN_SRC python :session mltute :exports both :results output
+loss, accuracy = model.evaluate(x_test_dense, y_test_enc, verbose=0)
+print("Loss={:.3f}\nAccuracy = {:.3f}".format(loss, accuracy))
+#+END_SRC
+
+#+RESULTS:
+: Loss=0.117
+: Accuracy = 0.964
+
+
+* GAN
+
+** A convolution GAN
+
+This trains two adverserial networks, one trying to create images
+equivalent to the MNIST dataset, the other trying to label the images
+as either from the dataset or generated by the opposing network.
+
+References:
+- For more on GANs and their uses: https://arxiv.org/pdf/1701.00160.pdf
+- Code based on: https://github.com/jacobgil/keras-dcgan
+- Some tricks for training GANs https://github.com/soumith/ganhacks
+
+#+ATTR_LATEX: :width \textwidth
+[[file:../../talks-2017/20171115-keras/Gan.png]]
+
+** Idea: Image generator network
+
+We start with the image generation network, which is essentially a
+image classifier in reverse. The top layer is for high-level feature
+inputs which we'll randomly set during the training. We
+then pass through Dense layers and then reshape into a `7 x 7 x channels`
+image-style layer. We upsample and pass through convolutional filters
+(which should here be adding features rather than finding features as
+in the image classifier) until the last layer which outputs a `28x28x1`
+image as expected of an MNIST greyscale image.
+
+** Generator
+
+#+BEGIN_SRC python :session mltute :exports code
+nfeatures = 100
+
+generate = Sequential()
+generate.add(Dense(1024, input_dim=nfeatures))
+generate.add(Activation('tanh'))
+generate.add(Dense(128*7*7))
+generate.add(BatchNormalization())
+generate.add(Activation('tanh'))
+generate.add(Reshape((7, 7, 128)))
+generate.add(UpSampling2D(size=(2,2)))
+generate.add(Conv2D(64, (5,5), padding='same'))
+generate.add(Activation('tanh'))
+generate.add(UpSampling2D(size=(2,2)))
+generate.add(Conv2D(1, (5, 5), padding='same'))
+generate.add(Activation('sigmoid'))
+generate.compile(loss="binary_crossentropy", optimizer="SGD")
+#+END_SRC
+
+#+RESULTS:
+
+** Generator Test
+
+Now, just to check everythings put together properly, randomly pass
+some data through the network and check we get image outputs as
+expected.
+
+#+BEGIN_SRC python :session mltute :exports both :results file
+nim = 25
+pred = generate.predict(np.random.uniform(0, 1, (nim,nfeatures)))
+
+plt.clf()
+for i in range(nim):
+    plt.subplot(np.sqrt(nim),np.sqrt(nim),i+1)
+    plt.imshow(pred[i,:,:,0], cmap='gray')
+
+pred[0].shape, np.average(pred[0])
+F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("genimg_no.png"); "genimg_no.png"
+#+END_SRC
+
+#+ATTR_LATEX: :width \textwidth
+#+RESULTS:
+[[file:genimg_no.png]]
+
+** Discriminator
+
+Next, we create the discriminating network. As for classification, we
+have a convolutional layer attached to Dense layers with a single
+sigmoid output, with 0 representing a generated image, and 1 a real
+MNIST dataset image.
+
+** Discriminator
+
+#+BEGIN_SRC python :session mltute :exports code
+discr = Sequential()
+discr.add(Conv2D(64, (5,5), input_shape=(28,28,1), padding='same'))
+discr.add(Activation('tanh'))
+discr.add(MaxPooling2D((2,2)))
+discr.add(Conv2D(128, (5,5)))
+discr.add(Activation('tanh'))
+discr.add(MaxPooling2D((2,2)))
+discr.add(Dropout(0.5))
+discr.add(Flatten())
+discr.add(Dense(1024))
+discr.add(Activation('tanh'))
+discr.add(Dense(1))
+discr.add(Activation('sigmoid'))
+discr.compile(loss='binary_crossentropy', optimizer=SGD(lr=0.0005, momentum=0.9, nesterov=True))
+#+END_SRC
+
+#+RESULTS:
+
+** MNIST Test
+
+Test the network with a few MNIST images and some random images. Since
+the network isn't trained we don't yet expect any differences in the
+output.
+
+#+BEGIN_SRC python :session mltute :exports both :results value
+x_prepred = np.concatenate([x_train[:5,:,:].reshape(5,28,28,1) / 256., 
+                            np.random.uniform(0, 1, (5, 28, 28, 1))], axis=0)
+discr.predict(x_prepred).T
+#+END_SRC
+
+#+RESULTS:
+| 0.53229088 | 0.53476292 | 0.53820759 | 0.5288614 | 0.52571678 | 0.57405263 | 0.58089125 | 0.58103019 | 0.5748226 | 0.57735825 |
+
+** GAN
+
+Now we set up a network which will be used to train the generation
+network. Keras allows us to simply add the models we just created
+together into a Sequential like they were ordinary layers. So, we feed
+the generator output into the discriminator input and set up an
+optimizer which will try to drive the generator to produce MNIST-like
+images (i.e. to fool the discriminator). Keras allows us to turn layer
+training on and off through the "trainable" variable attached to a
+layer, so when we train the generator we can easily turn training for
+the discriminator off.
+
+** Setup GAN
+
+#+BEGIN_SRC python :session mltute :exports code
+gen_discr = Sequential()
+gen_discr.add(generate)
+discr.trainable = False
+gen_discr.add(discr)
+gen_discr.compile(loss='binary_crossentropy', optimizer=SGD(lr=0.0005, momentum=0.9, nesterov=True),
+                  # optimizer='adam',
+                  metrics=['accuracy'])
+discr.trainable = True
+#+END_SRC
+
+#+RESULTS:
+
+** Training the GAN
+
+And finally, we have the actual training. Here, we setup the batches
+ourselves and alternate between training the discriminator and
+generator. We start by taking a batch of MNIST images (labeled 1), and
+generator images (labeled 0) and run a training batch on the
+discriminator network. Then, we turn off training off the
+discriminator and run training on the generator+discriminator network
+with random high-level feature inputs to the generator. We try to
+drive all the outputs to 1, i.e. train the generator to more
+MNIST-like images (as according to the discriminator network).
+
+** Training the GAN
+
+#+BEGIN_SRC python :session mltute
+batch_size = 100
+n_epochs = 10
+print_every_nth_epoch = 50
+x_tru_all = x_train.reshape(len(x_train), 28, 28, 1) / 256.
+
+zeros = np.array([0]*batch_size)
+ones = np.array([1]*batch_size)
+oneszeros = np.array([1]*batch_size + [0]*batch_size)
+
+losses_d = []
+losses_g = []
+for epoch in range(n_epochs):
+    print ("Epoch", epoch)
+    discr.save(os.getenv("HOME")+"/discr-"+str(epoch))
+    generate.save(os.getenv("HOME")+"/generate-"+str(epoch))
+    for i in range(0, len(x_train), batch_size):
+        x_gen = generate.predict(np.random.uniform(0, 1, (batch_size, nfeatures)))
+        x_tru = x_tru_all[i:i+batch_size]
+        discr.trainable=True
+        loss_d = discr.train_on_batch(np.concatenate([x_tru, x_gen], axis=0), oneszeros)
+        discr.trainable=False
+        loss_g = gen_discr.train_on_batch(np.random.uniform(0, 1, (batch_size, nfeatures)), ones)
+        if i % (print_every_nth_epoch*batch_size) == 0:
+            print (i / batch_size, "discr", loss_d, "--", "gen", loss_g[0], "( acc.", loss_g[1], ")")
+        losses_g.append(loss_g)
+        losses_d.append(loss_d)
+#+END_SRC
+
+** Checking results
+
+#+BEGIN_SRC python :session mltute :exports both :results file
+nim = 25
+pred = generate.predict(np.random.uniform(0, 1, (nim,nfeatures)))
+
+plt.clf()
+for i in range(nim):
+    plt.subplot(np.sqrt(nim),np.sqrt(nim),i+1)
+    plt.imshow(pred[i,:,:,0], cmap='gray')
+
+pred[0].shape, np.average(pred[0])
+F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("genimg_after.png"); "genimg_after.png"
+#+END_SRC
+
+** Good images
+
+only accept above 0.9 from discriminator
+
+#+BEGIN_SRC python :session mltute :exports both :results file
+nim = 25
+target = .9
+
+plt.clf()
+for i in range(nim):
+    best = 0; pred=None
+    while best < target:
+        pred = generate.predict(np.random.uniform(0, 1, (1,nfeatures)))
+        best = discr.predict(pred)[0][0]
+    plt.subplot(np.sqrt(nim),np.sqrt(nim),i+1)
+    plt.imshow(pred[0,:,:,0], cmap='gray')
+
+pred[0].shape, np.average(pred[0])
+F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("genimg40_best.9.png"); "genimg40_best.9.png"
+#+END_SRC
+
+** Bad images
+
+only accept below 0.1 from discriminator
+
+#+BEGIN_SRC python :session mltute :exports both :results file
+nim = 25
+target = .1
+
+plt.clf()
+for i in range(nim):
+    best = 1; pred=None
+    while best > target:
+        pred = generate.predict(np.random.uniform(0, 1, (1,nfeatures)))
+        best = discr.predict(pred)[0][0]
+    plt.subplot(np.sqrt(nim),np.sqrt(nim),i+1)
+    plt.imshow(pred[0,:,:,0], cmap='gray')
+
+pred[0].shape, np.average(pred[0])
+F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("genimg40_worst.1.png"); "genimg40_worst.1.png"
+#+END_SRC
+
+** Extensions
+
+- Try different networks, what works well, what fails badly?
+- Add another set of inputs hot-one encoding the number you want to
+  generate,
+  - The discriminator will need to say which number it believes its
+    seeing as well as how likely it is to be real
+  - The generator will need to train with the number output as a loss
+    also
+
+
+** Train also with number
+
+#+BEGIN_SRC python :session mltute :exports both :results file
+
+nfeatures = 100
+
+generate = Sequential()
+generate.add(Dense(1024, input_dim=(nfeatures + 10)))
+generate.add(Activation('tanh'))
+generate.add(Dense(128*7*7))
+generate.add(BatchNormalization())
+generate.add(Activation('tanh'))
+generate.add(Reshape((7, 7, 128)))
+generate.add(UpSampling2D(size=(2,2)))
+generate.add(Conv2D(64, (5,5), padding='same'))
+generate.add(Activation('tanh'))
+generate.add(UpSampling2D(size=(2,2)))
+generate.add(Conv2D(1, (5, 5), padding='same'))
+generate.add(Activation('sigmoid'))
+generate.compile(loss="binary_crossentropy", optimizer="SGD")
+
+
+discr = Sequential()
+discr.add(Conv2D(128, (5,5), input_shape=(28,28,1), padding='same'))
+discr.add(Activation('relu'))
+discr.add(MaxPooling2D((2,2)))
+discr.add(Conv2D(256, (5,5)))
+discr.add(Activation('relu'))
+discr.add(MaxPooling2D((2,2)))
+discr.add(Dropout(0.5))
+discr.add(Flatten())
+discr.add(Dense(1024))
+discr.add(Activation('tanh'))
+discr.add(Dense(11))  # 1 for real or fake, then 10 for which number
+discr.add(Activation('sigmoid'))
+discr.compile(loss='categorical_crossentropy', optimizer=SGD(lr=0.0005, momentum=0.9, nesterov=True),
+              metrics=['accuracy'])
+
+gen_discr = Sequential()
+gen_discr.add(generate)
+discr.trainable = False
+gen_discr.add(discr)
+gen_discr.compile(loss='categorical_crossentropy', optimizer=SGD(lr=0.0005, momentum=0.9, nesterov=True),
+                  # optimizer='adam',
+                  metrics=['accuracy'])
+discr.trainable = True
+
+batch_size = 100
+n_epochs = 50
+print_every_nth_epoch = 50
+x_tru_all = x_train.reshape(len(x_train), 28, 28, 1) / 256.
+
+zeros = np.array([0]*batch_size)
+ones = np.array([1]*batch_size)
+oneszeros = np.array([1]*batch_size + [0]*batch_size)
+
+# pre train the gan to be able to distinguish numbers
+pre_losses_d = []
+for epoch in range(5):
+    print ("Epoch", epoch)
+    for i in range(0, len(x_train), batch_size):
+        one_hot_gen = np.eye(10)[np.random.random_integers(0, 9, size=(batch_size,))]
+        x_inp = np.concatenate([np.random.uniform(0, 1, (batch_size, nfeatures)), one_hot_gen], axis=1)
+        x_gen = generate.predict(x_inp)
+        x_tru = x_tru_all[i:i+batch_size]
+        y_tru = y_train_enc[i:i+batch_size]
+        discr.trainable = True
+        for_d_tru = np.concatenate([np.zeros((batch_size,1)), y_tru], axis=1)
+        for_d_gen = np.concatenate([np.ones((batch_size,1)), np.zeros((batch_size,10))], axis=1)
+        loss_d = discr.train_on_batch(np.concatenate([x_tru, x_gen], axis=0), np.concatenate([for_d_tru, for_d_gen], axis=0))
+        if i % (print_every_nth_epoch*batch_size) == 0:
+            print (i / batch_size, "discr", loss_d)
+        pre_losses_d.append(loss_d)
+
+loss, accuracy = discr.evaluate(x_test_dense, np.concatenate([np.zeros((len(y_test_enc),1)), y_test_enc], axis=1), verbose=0)
+print("Loss={:.3f}\nAccuracy = {:.3f}".format(loss, accuracy))
+
+losses_d = []
+losses_g = []
+for epoch in range(n_epochs):
+    print ("Epoch", epoch)
+    discr.save("discr-num-"+str(epoch))
+    generate.save("generate-num-"+str(epoch))
+    for i in range(0, len(x_train), batch_size):
+        one_hot_gen = np.eye(10)[np.random.random_integers(0, 9, size=(batch_size,))]
+        x_inp = np.concatenate([np.random.uniform(0, 1, (batch_size, nfeatures)), one_hot_gen], axis=1)
+        x_gen = generate.predict(x_inp)
+        x_tru = x_tru_all[i:i+batch_size]
+        y_tru = y_train_enc[i:i+batch_size]
+        discr.trainable = True
+        for_d_tru = np.concatenate([np.zeros((batch_size,1)), y_tru], axis=1)
+        for_d_gen = np.concatenate([np.ones((batch_size,1)), np.zeros((batch_size,10))], axis=1)
+        loss_d = discr.train_on_batch(np.concatenate([x_tru, x_gen], axis=0), np.concatenate([for_d_tru, for_d_gen], axis=0))
+        discr.trainable=False
+        for_g = np.concatenate([np.zeros((batch_size,1)), one_hot_gen], axis=1)
+        new_inp_g = np.concatenate([np.random.uniform(0, 1, (batch_size, nfeatures)), one_hot_gen], axis=1)
+        loss_g = gen_discr.train_on_batch(new_inp_g, for_g)
+        if i % (print_every_nth_epoch*batch_size) == 0:
+            print (i / batch_size, "discr", loss_d, "--", "gen", loss_g[0], "( acc.", loss_g[1], ")")
+        losses_g.append(loss_g)
+        losses_d.append(loss_d)
+
+print ("done")
+#+END_SRC
+
+** Check
+
+#+BEGIN_SRC python :session mltute
+# generate = tf.keras.models.load_model('generate-num-41')
+
+nim = 25
+numb = 1
+pred = generate.predict(np.concatenate([np.random.uniform(0, 1, (nim,nfeatures)), np.eye(10)[[numb,]*nim] ], axis=1))
+
+plt.clf()
+for i in range(nim):
+    plt.subplot(np.sqrt(nim),np.sqrt(nim),i+1)
+    plt.imshow(pred[i,:,:,0], cmap='gray')
+
+pred[0].shape, np.average(pred[0])
+F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("gen-num-img_after-%d.png" % numb); "gen-num-img_after-%d.png" % numb
+#+END_SRC
+
+** Some egs
+
+#+ATTR_LATEX: :width .5\textwidth
+[[file:gen-num-img_after-4.png]]
+#+ATTR_LATEX: :width .5\textwidth
+[[file:gen-num-img_after-5.png]]
+
+* Backup
+
+#+LATEX: \backupbegin
+
+** Backup
+
+* Backup end
+
+#+LATEX: \backupend
+
+# (require 'ox-latex)
+# (setq org-latex-packages-alist nil)
+# (add-to-list 'org-latex-packages-alist '("" "minted"))
+# (setq org-latex-listings 'minted)
+

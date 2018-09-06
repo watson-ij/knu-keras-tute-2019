@@ -1017,7 +1017,7 @@ F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("genimg_after.png"); "gen
 
 #+LATEX: \centering
 #+ATTR_LATEX: :width .75\textwidth
-[[file:genimg_after.png]]
+[[file:genimg_after40.png]]
 
 ** Good images
 

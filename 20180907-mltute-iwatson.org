@@ -624,7 +624,7 @@ References:
 - Some tricks for training GANs https://github.com/soumith/ganhacks
 
 #+ATTR_LATEX: :width \textwidth
-[[file:../../talks-2017/20171115-keras/Gan.png]]
+[[file:Gan.png]]
 
 ** Idea: Image generator network
 

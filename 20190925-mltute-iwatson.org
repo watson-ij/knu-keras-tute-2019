@@ -9,7 +9,7 @@
 #+OPTIONS: ^:{} toc:nil H:2
 #+BEAMER_FRAME_LEVEL: 2
 #+LATEX_HEADER: \usepackage{tikz}
-#+LATEX_HEADER: \usepackage{amsmath} \usepackage{graphicx}
+#+LATEX_HEADER: \usepackage{amsmath} \usepackage{graphicx}  \usepackage{neuralnetwork}
 #+BEAMER_THEME: Madrid
 #+LATEX_HEADER: \usepackage{mathpazo}
 #+BEAMER_HEADER: \definecolor{IanColor}{rgb}{0.0, 0.4, 0.6}
@@ -36,33 +36,18 @@
 # Test RDataFrame in nightly:
 # . /cvmfs/sft.cern.ch/lcg/nightlies/dev3/Wed/ROOT/HEAD/x86_64-slc6-gcc7-opt/ROOT-env.sh
 
-* Todo List                                                        :noexport:
-
-Things to add:
-- [ ] Machine learning as function approximation/stats
-- [ ] Motivation of nn and universal approx. theorem
-- [ ] Get rid of initial import list?
-
 * Intro to Keras
-
 ** Slides
 
-- Slides available from:
+- Slides available from (this will redirect to my github repo.):
 
-_[[https://github.com/watson-ij/knu-keras-tute-2019]]_
-
-- In particular, the talk should be rendered as a webpage at:
-
-[[https://github.com/watson-ij/mltute/blob/master/20180907-mltute-iwatson.org]]
+_[[https://git.io/knu-slides-2019]]_
 
 - Other Resources:
-  - Keras documentation: http://keras.io/
-  - Large repository of various tutorials, examples, and applications
-    curated by the original author of Keras.
-    https://github.com/fchollet/keras-resources
+  - Keras documentation: _[[http://keras.io/]]_
+  - Tensorflow's guide to Keras: _[[https://www.tensorflow.org/guide/keras]]_
   - Another tutorial presentation:
-    https://uwaterloo.ca/data-science/sites/ca.data-science/files/uploads/files/keras_tutorial.pdf
-
+    _[[https://uwaterloo.ca/data-science/sites/ca.data-science/files/uploads/files/keras_tutorial.pdf]]_
 
 ** Goals
 
@@ -107,7 +92,7 @@ For a GPU tensorflow, usually best to build yourself (out of scope)
 
 ** Google Colab / Jupyter Basic Usage
 
-- https://colab.research.google.com/notebook
+- _[[https://colab.research.google.com/notebook]]_
 - Offers free jupyter-notebook-as-a-service in the cloud
   - Even offers free access to cloud-based GPUs
 - Has all the packages we'll need for today pre-installed
@@ -197,8 +182,8 @@ mnist = keras.datasets.mnist
 ** Overarching Idea of (Supervised) Maching Learning
 
 - Framework for Machine Learning: given a set of data, and set of
-  expected outputs, build a system which learns how to connect data to
-  output
+  expected outputs (typically categories), build a system which learns
+  how to connect data to output
 - Neural Network is one type, connect stacks of tensor operators with fixed linear and non-linear transformations
 - Optimize transformation parameters so as to approximate expected outputs
 
@@ -217,6 +202,7 @@ mnist = keras.datasets.mnist
     :BEAMER_col: .5
     :END:
 
+- Let's take a concrete example
 - The iris dataset is a classic classification task, first studied by
   Fisher in 1936. 
 - The goal is, given features measured from a particular
@@ -279,7 +265,165 @@ plot.savefig('iris.png'); 'iris.png'
 #+RESULTS:
 [[file:iris.png]]
 
-** Neural Networks
+** The Logistic Function and Logistic Regression
+
+\centering
+#+ATTR_LATEX: :width .4\textwidth
+[[file:logistic.pdf]]
+
+- The logistic (or sigmoid) function is defined as \(f(x) = \frac{1}{1+e^{-x}}\)
+  - Looks like a classic "turn-on" curve
+- Concentrate on the case of two classes (cat/dog or electron/photon),
+  and ask what we want from a classifier output
+  - We need to distinguish between the two classes using the output:
+  - If the value is 0, it represents the classifier identifying one class (cat)
+  - If its near 1, the classifier is identifies the other class (dog)
+  - Thus, we need to transform the input variables into 1D, then pass through the logistic function
+- This is a simple classification technique called /logistic regression/
+
+** Some very simple examples for simple logistic regression
+
+   #+begin_export latex
+\includegraphics<1>[width=.33\textwidth]{AND.png}
+\includegraphics<1>[width=.33\textwidth]{OR.png}
+\includegraphics<2>[width=.33\textwidth]{AND_cut.png}
+\includegraphics<2>[width=.33\textwidth]{OR_cut.png}   
+\includegraphics<3>[width=.33\textwidth]{AND_turnon.png}
+\includegraphics<3>[width=.33\textwidth]{OR_turnon.png}   
+   #+end_export
+
+- Let's think about approximating some simple binary functions
+- OR and AND gates
+  - OR is 0 (red) if both input are 0, 1 (blue) otherwise
+  - AND is 1 if both inputs are 1, 0 otherwise
+- Can we find logistic function approximations for this?
+  - That is, \(f(x_1, x_2)\) returns approximately 1 or 0 at the indicated points \pause
+- Yes! Take the projection perpendicular to the line \pause
+- and have the logistic turn on at the line (in the 2D plane the
+  logistic function will turn on as a "wave-front" along the black
+  line shown)
+  - e.g. \(f(x_1, x_2) = \sigma(2 x_1 + 2 x_2 - 1)\) for OR, \(f(x_1, x_2) = \sigma(2 x_1 + 2 x_2 - 3)\) for AND [\sigma is our logistic function]
+
+** Very simple example with issues for Logistic Regression
+
+#+begin_export latex
+\includegraphics[width=.33\textwidth]{XOR.png}
+#+end_export
+
+- Now consider the XOR gate: 1 if both inputs are the same, 0 otherwise
+- The XOR gate can't be generated with a logistic function!
+- Try it: no matter what line you draw, can't draw a logistic function
+  that turns on only the blue!
+
+** How to Fix: more logistic curves!
+
+#+attr_latex: :width .5\textwidth
+[[file:XOR_turnon.png]]
+
+- Can fix by having 2 turn-on curves, one turning on either of the
+  blue points, then summing the result
+- \(f(x_1, x_2) = \) [[color:green][\(\sigma(2 x_1 + 2 x_2 - 1)\)]] \(+\) [[color:magenta][\(\sigma(- 2 x_1 - 2 x_2 + 1)\)]]
+
+** The Feed-Forward Neural Network
+
+#+begin_export latex
+
+\centering
+\begin{neuralnetwork}[height=3]
+ \newcommand{\x}[2]{$x_#2$}
+ \newcommand{\y}[2]{$y$}
+ \newcommand{\hfirst}[2]{\small $h_#2$}
+ \newcommand{\hsecond}[2]{\small $h^{(2)}_#2$}
+ \inputlayer[count=2, bias=false, title=Input\\layer, text=\x]
+ \hiddenlayer[count=2, bias=false, title=Hidden\\layer, text=\hfirst] \linklayers
+% \hiddenlayer[count=3, bias=false, title=Hidden\\layer 2, text=\hsecond] \linklayers
+ \outputlayer[count=1, title=Output\\layer, text=\y] \linklayers
+\end{neuralnetwork}
+#+end_export
+
+- Consider the structure of what we just made
+  - \(y = f(x_1, x_2) = \sigma(-1 + 2 x_1 + 2 x_2) + \sigma(1 - 2 x_1 - 2 x_2)\)
+- Decompose the function into:
+  - the /input layer/ of \(\hat{x}\),
+  - the /hidden layer/ which calculates \(h_i = \beta_i \cdot x\) then passes if
+    through the /activation function/ \sigma, (called "sigmoid" in NN terms)
+    - as in logistic, there is an extra \(\beta_0\), called the
+      /bias/, which controls how big the input into the node must be to activate
+  - the /output layer/ which sums the results of the hidden layer and gives \(y\)
+    - \(y = 0 + 1 \cdot \sigma(h_1) + 1 \cdot \sigma(h_2)\)
+# , \(h_1 = 2 x_1 + 2 x_2 - 1\), \(h_2 = - 2 x_1 - 2 x_2 + 1\)
+# - The logistic function (when in a NN its called "sigmoid") is our "activation function"
+
+** Feed-Forward Neural Network
+
+#+begin_export latex
+
+\centering
+\begin{neuralnetwork}[height=5]
+ \newcommand{\x}[2]{$x_#2$}
+ \newcommand{\y}[2]{$y_#2$}
+ \newcommand{\hfirst}[2]{\small $h_#2$}
+ \inputlayer[count=3, bias=false, title=Input\\layer, text=\x]
+ \hiddenlayer[count=5, bias=false, title=Hidden\\layer, text=\hfirst] \linklayers
+% \hiddenlayer[count=3, bias=false, title=Hidden\\layer 2, text=\hsecond] \linklayers
+ \outputlayer[count=3, title=Output\\layer, text=\y] \linklayers
+\end{neuralnetwork}
+#+end_export
+
+- In general, we could have several input variables, and output variables
+- In the case of classification, we would usually have a final
+  /softmax/ applied to \(\hat{y}\), but could use any /activation/ \(\varphi\) here also
+  - /softmax/ normalizes the output layer so it sums to 1: $f_k(x) = \frac{e^{-y_k}}{\sum_i e^{-y_i}}$ 
+
+** Feed-Forward Neural Network
+
+#+begin_export latex
+
+\centering
+\begin{neuralnetwork}[height=5]
+ \newcommand{\x}[2]{$x_#2$}
+ \newcommand{\y}[2]{$y_#2$}
+ \newcommand{\hfirst}[2]{\small $h^{1}_#2$}
+ \newcommand{\hsecond}[2]{\small $h^{2}_#2$}
+ \inputlayer[count=3, bias=false, title=Input\\layer, text=\x]
+ \hiddenlayer[count=4, bias=false, title=Hidden\\layer 1, text=\hfirst] \linklayers
+ \hiddenlayer[count=5, bias=false, title=Hidden\\layer 2, text=\hsecond] \linklayers
+ \outputlayer[count=3, title=Output\\layer, text=\y] \linklayers
+\end{neuralnetwork}
+#+end_export
+
+- We can even have several hidden layers
+  - The previous layer acts the same as an /input layer/ to the next
+    layer
+- We call each node in the network a /neuron/
+- The deep learning algorithms we will see later are just variations
+  on this theme, using more complicated transformations
+
+** Universal Approximation Thereom
+
+\small
+Let \(\varphi :\mathbb {R} \to \mathbb {R}\) be a nonconstant,
+bounded, and continuous function. Let \(I_{m}\) denote the
+\(m\)-dimensional unit hypercube \([0,1]^{m}\). The space of
+real-valued continuous functions on \(I_{m}\) is denoted by
+\(C(I_{m})\). Then, given any \(\varepsilon >0\) and any function
+\(f\in C(I_{m})\), there exist an integer \(N\), real constants
+\(v_{i},b_{i}\in \mathbb {R}\) and real vectors \(w_{i}\in \mathbb {R}
+^{m}\) for \(i=1,\ldots ,N\) such that we may define:
+\[F(x)=\sum _{i=1}^{N}v_{i}\varphi \left(w_{i}^{T}x+b_{i}\right)\]
+as an approximate realization of the function \(f\); that is,
+\[|F(x)-f(x)|<\varepsilon\]
+for all \(x\in I_{m}\). In other words, functions of the form \(F(x)\) are dense in \(C(I_{m})\).
+
+This still holds when replacing \(I_{m}\) with any compact subset of \(\mathbb {R} ^{m}\). 
+
+- In brief: with a hidden layer (of enough nodes), any (sensible)
+  function \(f : \mathbb{R}^m \to \mathbb{R}\) can be approximated by
+  a feed-forward NN
+  - Any (sensible) activation \(\varphi\) can work, not just \sigma
+- There is a simple, graphical proof for those who are interested: _[[http://neuralnetworksanddeeplearning.com/chap4.html]]_
+
+** Neural Networks Overview
 
 #+LATEX: \centering
 #+ATTR_LATEX: :width .5\textwidth
@@ -296,14 +440,17 @@ plot.savefig('iris.png'); 'iris.png'
 
 ** Backpropagation
 
-- There is a theorem which says that neural networks can
-  well-approximate any (nice enough) function
-- To do this, we start with a random network and "train" the network (set the weights)
 - The algorithm to train neural networks is called *backpropagation*
+- Its essentially a gradient descent implemented taking the network
+  structure into account to speed up evaluation of the partials
+- To apply gradient descent, need a function of a single variable, called the /loss/
+  - \(L(x_i|\sigma) = \sum_i |x_i - y_i|^2\) for inputs \(x_i\) and network output \(y_i(\sigma)\)
 - We start with the parameters set to arbitrary values, usually picked from e.g. unit gaussian
 - We run a forward pass through the network and calculate the loss
-- Using the chain rule, calculate derivates backward from the loss to the higher layers
+- Using the chain rule, calculate /all/ the derivates backward from the loss to
+  the higher layers
 - Propagate changes based on the gradient $\Delta w_i = -\eta \frac{\partial f}{\partial w_i}$
+- For more on how backpropagation works: _[[http://neuralnetworksanddeeplearning.com/chap2.html]]_
 
 ** Keras Networks
 
@@ -335,7 +482,7 @@ In order to classify the irises, we'll build a simple network in Keras.
   - /tanh/: $f(x) = \tanh{x} = \frac{e^x - e^{-x}}{e^x + e^{-x}}$
   - /relu/: $f(x) = \mathrm{max}(0, x)$, 'rectified linear unit'
   - /softplus/: $f(x) =  \ln{(1 + e^x)}$, smooth approx. to /relu/
-  - /softmax/: $f_k(x) = \frac{e^{-x_k}}{\sum_i e^{-x_i}}$ for the $k$'th output, as last layer of categorical dsitribution, represents a probability distribution over the outputs
+  - /softmax/: $f_k(x) = \frac{e^{-x_k}}{\sum_i e^{-x_i}}$ for the $k$'th output, as last layer of categorical distribution, represents a probability distribution over the outputs
 
 ** Build a model: Python code
 
@@ -378,8 +525,9 @@ _________________________________________________________________
 
 ** More on model building
 
-- When =add=ing layers, keras takes care of input/output size details
+- When =add='ing layers, keras takes care of input/output size details
   - Except for the input layer, which must be specified
+  - We explicitly gave the network =(4,)= for our 4 input variables
 - The final layer we make size 3 after a softmax activiation
   - This will output the network probability for each of the potential
     iris classes as a numpy array 
@@ -394,7 +542,8 @@ _________________________________________________________________
 #+LATEX:  \scriptsize
 #+BEGIN_SRC python
 model.compile(loss=keras.losses.mean_squared_error, 
-              optimizer=keras.optimizers.SGD(lr=0.0005, momentum=0.9, nesterov=True))
+              optimizer=keras.optimizers.SGD(lr=0.0005, momentum=0.9,
+                                             nesterov=True))
 #+END_SRC
 
 
@@ -426,14 +575,13 @@ ReLU \hfill sigmoid \hfill tanh \hfill softplus
 #+ATTR_LATEX: :width .242\textwidth
 [[file:softplus.png]]
  
-** Model picutre
+** Model picture
 
 If pydot is installed we can also output a picture of the network
 
 \footnotesize
 #+BEGIN_SRC python :session mltute :results file :exports both
 keras.utils.plot_model(model, to_file='iris_model.png')
-'iris_model.png'
 #+END_SRC
 
 #+ATTR_LATEX: :width .24\textwidth
@@ -473,7 +621,7 @@ Epoch 15/15
 120/120 [==============================] - 0s - loss: 0.1477 - acc: 0.9583
 #+end_example
 
-** Training 
+** Training
 
 - Now we fit to the training data. 
 - We can set the number of =epochs=, =batch_size=, and =verbose='ity
@@ -565,7 +713,6 @@ print(np.stack([test_y, pred_y], axis=1)[:10])
 #+end_example
 
 * DNN: MNIST
-
 ** MNIST digit recognition and Convolutional Networks
 
 - Another, more recent, classic classification task. 
@@ -614,7 +761,7 @@ for i in range(6):
     plt.imshow(x_train[i], cmap='gray')
 
 F = plt.gcf(); F.set_size_inches((14,2))
-plt.savefig('mnist-examples.png'); 'mnist-examples.png'
+plt.savefig('mnist-examples.png');
 #+END_SRC
 
 #+RESULTS:
@@ -687,6 +834,16 @@ print("Loss={:.2f}\nAccuracy = {:.2f}".format(loss, accuracy))
 #+LATEX: \tiny
 Reference: http://www.wildml.com/2015/11/understanding-convolutional-neural-networks-for-nlp/
 
+** What is the Network Learning?
+
+- In general a difficult question to answer
+- Here, Zeiler and Fergus (2013) took a trained network and /optimized
+  the input/ to activate particular nodes to give an idea
+  - Start with noise, then GD on the input, optimizing the node activation
+
+#+ATTR_LATEX: :width .9\textwidth
+[[file:network_layers.png]]
+
 ** Reshaping data for Keras
 
 - Convolution of this type in Keras is provided by the =Conv2D= layer
@@ -703,11 +860,11 @@ x_test_dense = x_test.reshape((len(x_test), 28,28,1))
 
 plt.clf()
 plt.imshow(x_train_dense[0,:,:,0], cmap="gray")
-F = plt.gcf(); F.set_size_inches((2,2)); plt.savefig("testimg.png"); "testimg.png"
+F = plt.gcf(); F.set_size_inches((2,2)); plt.savefig("testimg.png");
 #+END_SRC
 
 #+LATEX: \vspace{-3mm}
-#+ATTR_LATEX: :width .3\textwidth
+#+ATTR_LATEX: :width .2\textwidth
 #+RESULTS:
 [[file:testimg.png]]
 
@@ -777,9 +934,7 @@ print("Loss={:.3f}\nAccuracy = {:.3f}".format(loss, accuracy))
 : Loss=0.117
 : Accuracy = 0.964
 
-
 * GAN
-
 ** A Convolution GAN
 
 - The idea is to train two adverserial networks,
@@ -855,7 +1010,8 @@ for i in range(nim):
     plt.imshow(pred[i,:,:,0], cmap='gray')
 
 pred[0].shape, np.average(pred[0])
-F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("genimg_no.png"); "genimg_no.png"
+F = plt.gcf(); F.set_size_inches((10,10))
+plt.savefig("genimg_no.png")
 #+END_SRC
 
 ** Example images, pre-training
@@ -891,7 +1047,8 @@ discr.add(Activation('tanh'))
 discr.add(Dense(1))
 discr.add(Activation('sigmoid'))
 discr.compile(loss='binary_crossentropy', 
-              optimizer=SGD(lr=0.0005, momentum=0.9, nesterov=True))
+              optimizer=SGD(lr=0.0005, momentum=0.9, 
+                            nesterov=True))
 #+END_SRC
 
 #+RESULTS:
@@ -927,13 +1084,20 @@ discr.predict(x_prepred)
 
 ** Setup GAN
 
+- Using Keras, we can simply add the generator and discriminator
+  sub-networks into a new, combined network, similarly to any other
+  layer!
+- We can also simply tell it to turn off training the discriminator
+  weights when we are optimizing the generator!
+
 #+BEGIN_SRC python :session mltute :exports code
 gen_discr = Sequential()
 gen_discr.add(generate)
 discr.trainable = False
 gen_discr.add(discr)
 gen_discr.compile(loss='binary_crossentropy', 
-                  optimizer=SGD(lr=0.0005, momentum=0.9, nesterov=True),
+                  optimizer=SGD(lr=0.0005, momentum=0.9, 
+                                nesterov=True),
                   metrics=['accuracy'])
 discr.trainable = True
 #+END_SRC
@@ -1082,6 +1246,7 @@ F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("genimg40_worst.1.png"); 
     seeing as well as how likely it is to be real
   - The generator will need to train with the number output as a loss
     also
+- Some further ideas on the next pages, work in progress code :-)
 
 ** Train requiring GAN to also output the correct number
 
@@ -1240,19 +1405,4 @@ F = plt.gcf(); F.set_size_inches((10,10)); plt.savefig("gen-num-img_after-%d.png
 [[file:gen-num-img_after-4.png]]
 #+ATTR_LATEX: :width .5\textwidth
 [[file:gen-num-img_after-5.png]]
-
-* Backup
-
-#+LATEX: \backupbegin
-
-** Backup
-
-* Backup end
-
-#+LATEX: \backupend
-
-# (require 'ox-latex)
-# (setq org-latex-packages-alist nil)
-# (add-to-list 'org-latex-packages-alist '("" "minted"))
-# (setq org-latex-listings 'minted)
 

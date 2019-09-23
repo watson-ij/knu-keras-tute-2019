@@ -1,5 +1,5 @@
 # ML tutorial
 
-Visit:
+To view the slides online visit:
 
-https://github.com/watson-ij/mltute/blob/master/20180907-mltute-iwatson.org
+https://github.com/watson-ij/knu-keras-tute-2019/blob/master/20190925-mltute-iwatson.org

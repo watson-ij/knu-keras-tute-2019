@@ -347,7 +347,7 @@ plot.savefig('iris.png'); 'iris.png'
   - the /input layer/ of \(\hat{x}\),
   - the /hidden layer/ which calculates \(h_i = \beta_i \cdot x\) then passes if
     through the /activation function/ \sigma, (called "sigmoid" in NN terms)
-    - as in logistic, there is an extra \(\beta_0\), called the
+    - There is an extra \(\beta_0\), called the
       /bias/, which controls how big the input into the node must be to activate
   - the /output layer/ which sums the results of the hidden layer and gives \(y\)
     - \(y = 0 + 1 \cdot \sigma(h_1) + 1 \cdot \sigma(h_2)\)
@@ -933,6 +933,15 @@ print("Loss={:.3f}\nAccuracy = {:.3f}".format(loss, accuracy))
 #+RESULTS:
 : Loss=0.117
 : Accuracy = 0.964
+
+** Realistic Networks
+
+#+ATTR_LATEX: :width .8\textwidth
+[[file:vgg16.png]]
+
+- Example of a real network used for image classification, VGG-16
+- Typically, networks consist of several convolution layers following
+  by max pooling layers (take the max from a 2x2 square)
 
 * GAN
 ** A Convolution GAN
